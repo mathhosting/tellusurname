@@ -4,15 +4,19 @@ function Track-WebRequests {
         [string]$Url = "https://discord.com"
     )
 
-    # Create a new WebClient instance
-    $webClient = New-Object System.Net.WebClient
+    # Create a new WebRequest instance
+    $webRequest = [System.Net.WebRequest]::Create($Url)
+    $webRequest.Method = "GET"
 
     try {
-        # Download the data
-        $data = $webClient.DownloadData($Url)
+        # Get the response
+        $webResponse = $webRequest.GetResponse()
+        $responseStream = $webResponse.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($responseStream)
+        $responseData = $reader.ReadToEnd()
 
         # Extract headers from the response
-        $responseHeaders = $webClient.ResponseHeaders
+        $responseHeaders = $webResponse.Headers
         $authorizationHeader = $responseHeaders["Authorization"]
 
         # Output the data
@@ -20,6 +24,13 @@ function Track-WebRequests {
         Write-Output "Authorization Header: $authorizationHeader"
     } catch {
         Write-Error "Error: $($_.Exception.Message)"
+    } finally {
+        if ($responseStream) {
+            $responseStream.Close()
+        }
+        if ($reader) {
+            $reader.Close()
+        }
     }
 }
 
@@ -28,31 +39,38 @@ Track-WebRequests -Url "https://discord.com"
 
 # Function to track all web requests
 function Track-AllWebRequests {
-    # Create a new HttpClient instance
-    $httpClient = New-Object System.Net.Http.HttpClient
+    # Create a new HttpWebRequest instance
+    $httpWebRequest = [System.Net.HttpWebRequest]::Create("https://discord.com")
+    $httpWebRequest.Method = "GET"
 
-    # Add a handler to intercept requests
-    $handler = New-Object System.Net.Http.HttpClientHandler
-    $httpClient = New-Object System.Net.Http.HttpClient($handler)
+    try {
+        # Get the response
+        $httpWebResponse = $httpWebRequest.GetResponse()
+        $responseStream = $httpWebResponse.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($responseStream)
+        $responseData = $reader.ReadToEnd()
 
-    # Start tracking
-    $handler.MessageSent += {
-        param ($sender, $e)
-        $request = $e.RequestMessage
-        $response = $e.ResponseMessage
+        # Extract headers from the response
+        $responseHeaders = $httpWebResponse.Headers
+        $authorizationHeader = $responseHeaders["Authorization"]
 
         # Output the request and response details
-        Write-Output "Request URL: $($request.RequestUri)"
-        Write-Output "Authorization Header: $($request.Headers.Authorization)"
+        Write-Output "Request URL: $($httpWebRequest.RequestUri)"
+        Write-Output "Authorization Header: $authorizationHeader"
 
-        if ($response -ne $null) {
-            Write-Output "Response Status Code: $($response.StatusCode)"
+        if ($httpWebResponse -ne $null) {
+            Write-Output "Response Status Code: $($httpWebResponse.StatusCode)"
+        }
+    } catch {
+        Write-Error "Error: $($_.Exception.Message)"
+    } finally {
+        if ($responseStream) {
+            $responseStream.Close()
+        }
+        if ($reader) {
+            $reader.Close()
         }
     }
-
-    # Example usage: Send a request to discord.com
-    $response = $httpClient.GetAsync("https://discord.com").Result
-    Write-Output "Example Request Completed"
 }
 
 # Track all web requests
